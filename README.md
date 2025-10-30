@@ -26,13 +26,12 @@ Optional macOS Automator app integration — run with a double-click.
 Project structure
 
 jobs_scrape/
-│
-├── scrape.ts          # Main scraping script
-├── package.json       # Project metadata and dependencies
-├── tsconfig.json      # TypeScript compiler configuration
-├── jobs.csv           # All scraped jobs (auto-generated)
-├── unique_jobs.csv    # New/unique jobs only (auto-generated)
-└── .gitignore
+scrape.ts - Main scraping script
+package.json - Project metadata and dependencies
+tsconfig.json - TypeScript compiler configuration
+jobs.csv - All scraped jobs (auto-generated)
+unique_jobs.csv - New/unique jobs only (auto-generated)
+gitignore
 
 Installation
 
