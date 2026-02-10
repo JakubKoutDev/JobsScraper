@@ -32,7 +32,9 @@ async function scrape() {
     getJobs($);
 
     // If next page button is missing, the current page is the last page
-    await isLastPage($)
+    if (isLastPage($)) {
+        await applySearchCriteria()
+    } else return
 
     incrementPage()
 }
@@ -154,15 +156,13 @@ function getJobs($: CheerioAPI){
 
 }
 
-async function isLastPage($: CheerioAPI){
+function isLastPage($: CheerioAPI){
     const $nextPageButton = $(".Pagination__button--next")
 
     if ($nextPageButton.length === 0) {
         console.log("Page overflow or last page")
         return true
-        await applySearchCriteria()
-        return
-    }
+    }else return false
 
 }
 
