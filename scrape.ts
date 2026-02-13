@@ -13,10 +13,10 @@ let scrapeURL = `https://www.jobs.cz/prace/?q%5B%5D=angular&q%5B%5D=web&q%5B%5D=
 type Job = { id: number, title: string; url: string, locality: string }
 
 const jobs: Job[] = [];
-let jobsFilteredTemp: Job[] = [];
+let jobsFiltered: Job[] = [];
 
 const searchCriteria = ["Angular", "Programátor", "Vývojář", "React", "Web developer", "Developer", "Software Developer", "HTML", "Javascript", "Typescript", "Software Engineer", "Frontend", "Datový analytik", "Data analyst", "Databáze", "SQL", "SW", "Backend", "Řidič", "IT Konzultant", "Data engineer"]
-const excludeJobsKeywords = [ ".NET", "C#", "Senior", "PLC", "Embedded", "C++", "Experienced",]
+const excludeJobsKeywords = [".NET", "C#", "Senior", "PLC", "Embedded", "C++", "Experienced",]
 
 let assignPageQueryParamToURL = () => {
     scrapeURL = `https://www.jobs.cz/prace/?q%5B%5D=angular&q%5B%5D=web&q%5B%5D=v%C3%BDvoj%C3%A1%C5%99&q%5B%5D=react&q%5B%5D=web%20developer&q%5B%5D=data%20analyst&q%5B%5D=data&q%5B%5D=sql&q%5B%5D=mac&profession%5B%5D=201100249&profession%5B%5D=201100619&profession%5B%5D=201100271&page=${page}`
@@ -32,9 +32,20 @@ async function scrape() {
     getJobs($);
 
     // If next page button is missing, the current page is the last page
-    if (isLastPage($)) {
-        await applySearchCriteria()
-    } else return
+    if (!isLastPage($)) {
+        return
+    }
+    const newJobsNormalized = normalizeNewJobsData()
+
+    const newJobsFiltered = applySearchCriteria(newJobsNormalized)
+
+    const uniqueJobs = findUniqueJobs(newJobsFiltered)
+
+    const mergedNewJobsToAllJobs = mergeNewJobsToAlreadyScrapedJobs(uniqueJobs)
+
+    saveToCsv(mergedNewJobsToAllJobs, uniqueJobs)
+
+    exec('open -a "Microsoft Excel" "unique_jobs.csv"');
 
     incrementPage()
 }
@@ -45,33 +56,21 @@ function incrementPage() {
     scrape().catch(console.error);
 }
 
-async function applySearchCriteria() {
-    const newJobsNormalized: Job[] = jobs.map(job => {
-        return {
-            id: job.id,
-            title: job.title.toLowerCase(),
-            url: job.url,
-            locality: job.locality
-        }
-    })
+function applySearchCriteria(newJobsNormalized: Job[]) {
 
+    // Push into an array only these new jobs that match the search criteria
     newJobsNormalized.forEach(job => {
         searchCriteria.forEach(criteria => {
             const criteriaNormalized = criteria.toLowerCase()
             if (job.title.includes(criteriaNormalized)) {
-                jobsFilteredTemp.push(job)
+                jobsFiltered.push(job)
             }
         })
     })
 
-    const jobsFilteredForbiddenJobs = jobsFilteredTemp.filter(job => {
-        const containsForbiddenKeyword = excludeJobsKeywords.some(keyword => {
-            return job.title.includes(keyword.toLowerCase())
-        })
-        return !containsForbiddenKeyword
-    })
+    return filterForbiddenJobs()
 
-    await findUniqueJobsAndSaveToCsv(jobsFilteredForbiddenJobs)
+    // await findUniqueJobsAndSaveToCsv(jobsFilteredForbiddenJobs)
 }
 
 function readJobsCsv(filePath: string): Job[] {
@@ -99,26 +98,33 @@ function readJobsCsv(filePath: string): Job[] {
 }
 
 // Finds unique jobs, saves them to dedicated CSV and to the CSV that contains all historically scraped relevant jobs
-async function findUniqueJobsAndSaveToCsv(newJobsFiltered: Job[]) {
+// async function findUniqueJobsAndSaveToCsv(newJobsFiltered: Job[]) {
+    // // Read the content of the file containing entire scrape history and convert to JSON (in-memory)
+    // const allAlreadyScrapedJobs = readJobsCsv("jobs.csv")
+    // // Creates a simple Set of job IDs that is used to determine unique jobs below
+    // const existingIds = new Set(allAlreadyScrapedJobs.map(job => {
+    //     return job.id
+    // }));
+    // // Gets the unique jobs
+    // const uniqueJobs = findUniqueJobs(newJobsFiltered, existingIds)
+    // Merge the new, unseen jobs to all seen jobs records and save -- the current content of jobs.csv (all historically scraped relevant records)
+    // must be first pulled into the memory, converted into JSON, merged with the new unique records and saved back to the jobs.csv,
+    // which will now contain the updated historical records
+    // const mergeNewJobsToAlreadyScrapedJobs = allAlreadyScrapedJobs.concat(uniqueJobs)
+    // saveToCsv(mergeNewJobsToAlreadyScrapedJobs, uniqueJobs)
+    // Opens excel spreadsheet with the unique jobs
+    // exec('open -a "Microsoft Excel" "unique_jobs.csv"');
+// }
+
+// Find whether the new scrape contains jobs that were already scraped in the past - filter them out
+function findUniqueJobs(newJobsFiltered: Job[]) {
     // Read the content of the file containing entire scrape history and convert to JSON (in-memory)
     const allAlreadyScrapedJobs = readJobsCsv("jobs.csv")
     // Creates a simple Set of job IDs that is used to determine unique jobs below
     const existingIds = new Set(allAlreadyScrapedJobs.map(job => {
         return job.id
     }));
-    // Gets the unique jobs
-    const uniqueJobs = findUniqueJobs(newJobsFiltered, existingIds)
-    // Merge the new, unseen jobs to all seen jobs records and save -- the current content of jobs.csv (all historically scraped relevant records)
-    // must be first pulled into the memory, converted into JSON, merged with the new unique records and saved back to the jobs.csv,
-    // which will now contain the updated historical records
-    const mergeNewJobsToAlreadyScrapedJobs = allAlreadyScrapedJobs.concat(uniqueJobs)
-    saveToCsv(mergeNewJobsToAlreadyScrapedJobs, uniqueJobs)
-    // Opens excel spreadsheet with the unique jobs
-    exec('open -a "Microsoft Excel" "unique_jobs.csv"');
-}
 
-// Find whether the new scrape contains jobs that were already scraped in the past - filter them out
-function findUniqueJobs(newJobsFiltered: Job[], existingIds: Set<number>){
     return newJobsFiltered.filter(job => {
         return !existingIds.has(job.id)
     });
@@ -129,7 +135,7 @@ function saveToCsv(allJobs: Job[], uniqueJobs: Job[]) {
     fs.writeFileSync("unique_jobs.csv", '\uFEFF' + json2csv(uniqueJobs), {encoding: "utf-8"})
 }
 
-async function fetchHtml(){
+async function fetchHtml() {
     return got(scrapeURL, {
         headers: {
             "user-agent": "Mozilla/5.0 (JobScraper/1.0)",
@@ -138,7 +144,7 @@ async function fetchHtml(){
     }).text();
 }
 
-function getJobs($: CheerioAPI){
+function getJobs($: CheerioAPI) {
     const $listing = $(".SearchResultCard")
 
     $listing.each((_, listing) => {
@@ -156,14 +162,39 @@ function getJobs($: CheerioAPI){
 
 }
 
-function isLastPage($: CheerioAPI){
+function isLastPage($: CheerioAPI) {
     const $nextPageButton = $(".Pagination__button--next")
 
     if ($nextPageButton.length === 0) {
         console.log("Page overflow or last page")
         return true
-    }else return false
+    } else return false
 
+}
+
+function normalizeNewJobsData() {
+    return jobs.map(job => {
+        return {
+            id: job.id,
+            title: job.title.toLowerCase(),
+            url: job.url,
+            locality: job.locality
+        } as Job
+    })
+}
+
+function filterForbiddenJobs() {
+    return jobsFiltered.filter(job => {
+        const containsForbiddenKeyword = excludeJobsKeywords.some(keyword => {
+            return job.title.includes(keyword.toLowerCase())
+        })
+        return !containsForbiddenKeyword
+    })
+}
+
+function mergeNewJobsToAlreadyScrapedJobs(uniqueJobs: Job[]) {
+    const allAlreadyScrapedJobs = readJobsCsv("jobs.csv")
+    return allAlreadyScrapedJobs.concat(uniqueJobs)
 }
 
 scrape().catch(console.error);
