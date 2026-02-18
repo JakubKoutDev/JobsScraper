@@ -30,7 +30,7 @@ fi
 echo "$TODAY" > "$LAST_RUN_FILE"
 
 
-# ---- Load NVM (you said you use it)
+# ---- Load NVM
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 nvm use --silent 23.4.0   # or whatever version you use

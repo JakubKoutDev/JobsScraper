@@ -109,7 +109,7 @@ async function applySearchCriteria() {
     });
     // Filter out jobs that contain forbidden keyword from the array
     const ggg = jobsFiltered.filter(job => {
-        console.log("SSSSSSSSSSSSSSS");
+        console.log("xxxxxxxxxxSSSSSSSSSSSSSSS");
         const containsForbiddenKeyword = excludeJobsKeywords.some(keyword => {
             console.log("MMMMMMMMMMMMMMMMMMMMM");
             console.log(keyword, job.title, job.title.includes(keyword.toLowerCase()));
