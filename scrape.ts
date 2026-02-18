@@ -17,7 +17,7 @@ import {AnyNode} from "domhandler";
 
 export type Job = { id: number, title: string; url: string, locality: string }
 
-async function runScraper() {
+export async function runScraper() {
     const scrapedJobs = await scrapeAllPages()
     const existingJobs = await readAllExistingJobsCsv(allJobsCsvFilePath)
     const newJobsNormalized = normalizeNewJobsData(scrapedJobs)
@@ -115,9 +115,7 @@ async function readAllExistingJobsCsv(filePath: string): Promise<Job[]> {
 }
 
 // Find whether the new scrape contains jobs that were already scraped in the past - filter them out
-function findUniqueJobs(newJobsFiltered: Job[], existingJobs: Job[]): Job[] {
-    // Read the content of the file containing entire scrape history and convert to JSON (in-memory)
-    // const allAlreadyScrapedJobs = readJobsCsv(allJobsCsvFilePath)
+export function findUniqueJobs(newJobsFiltered: Job[], existingJobs: Job[]): Job[] {
     // Creates a simple Set of job IDs that is used to determine unique jobs below
     const existingIds = new Set(existingJobs.map(job => {
         return job.id
@@ -223,4 +221,3 @@ function log(level: "INFO" | "WARN" | "ERROR", message: string) {
     console.log(`[${timestamp}] ${level} ${message}`);
 }
 
-runScraper().catch(console.error);
